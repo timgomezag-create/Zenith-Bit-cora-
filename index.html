@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenith Trading Journal - Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a; --bg-panel: #141414; --bg-input: #1f1f1f;
+            --gold: #d4af37; --text-main: #e0e0e0; --text-muted: #888;
+            --green: #66bb6a; --red: #ef5350; --yellow: #fbc02d;
+        }
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        
+        .sticky-header { position: sticky; top: 0; z-index: 1000; background-color: var(--bg-dark); padding: 15px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.8); border-bottom: 1px solid #333; }
+        .header-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .header-title h1 { margin: 0; color: var(--gold); font-weight: 300; letter-spacing: 3px; text-transform: uppercase; font-size: 24px; }
+        .author-signature { font-size: 13px; color: var(--text-muted); font-style: italic; letter-spacing: 1px; }
+        
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 15px; background-color: var(--bg-panel); padding: 10px; border-radius: 8px; border: 1px solid #333; }
+        .dash-item { text-align: center; border-right: 1px solid #333; }
+        .dash-item:last-child { border-right: none; }
+        .dash-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+        .dash-value { font-size: 18px; font-weight: bold; color: #fff; }
+
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        h2 { text-align: center; color: #ffffff; font-weight: 300; margin-top: 20px; letter-spacing: 1px;}
+
+        .fondeo-panel { background-color: var(--bg-panel); border: 1px solid var(--gold); border-radius: 8px; padding: 15px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+        .fondeo-config { display: flex; gap: 10px; align-items: center; font-size: 12px; }
+        .fondeo-config input { width: 80px; padding: 5px; background: var(--bg-input); color: white; border: 1px solid #444; border-radius: 4px; }
+        .semaforo { padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 13px; text-transform: uppercase; text-align: center; }
+        .semaforo.verde { background-color: var(--green); color: #0a0a0a; }
+        .semaforo.amarillo { background-color: var(--yellow); color: #0a0a0a; }
+        .semaforo.rojo { background-color: var(--red); color: white; }
+
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .chart-container { background-color: var(--bg-panel); padding: 15px; border-radius: 8px; border: 1px solid #333; height: 250px; position: relative; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stats-box { background-color: var(--bg-panel); padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        .stats-box h3 { margin-top: 0; color: var(--gold); font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px dashed #2a2a2a; }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: #aaa; }
+        .stat-val { color: #fff; font-weight: bold; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 11px; color: var(--gold); margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
+        input, select, textarea { padding: 10px; border-radius: 6px; border: 1px solid #333; background-color: var(--bg-input); color: #fff; font-size: 13px; width: 100%; box-sizing: border-box; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); }
+        #dia { background-color: var(--bg-dark); color: var(--gold); font-weight: bold; border: 1px dashed #444; }
+        
+        button { padding: 14px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 14px; letter-spacing: 1px; }
+        .btn-add { background-color: var(--gold); color: var(--bg-dark); width: 100%; margin-bottom: 20px; }
+        .btn-add:hover { background-color: #b8962e; }
+        .btn-export { background-color: #333; color: #fff; margin-top: 15px; width: 100%; }
+        .btn-export:hover { background-color: #555; }
+        .btn-report { background-color: var(--gold); color: #0a0a0a; margin-top: 15px; width: 100%; }
+
+        .table-wrapper { overflow-x: auto; background-color: var(--bg-panel); border-radius: 8px; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2a2a2a; }
+        th { background-color: var(--bg-dark); color: var(--gold); font-weight: 600; text-transform: uppercase; font-size: 11px;}
+        tr:hover { background-color: var(--bg-input); }
+        .positive { color: var(--green); font-weight: bold; }
+        .negative { color: var(--red); font-weight: bold; }
+
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); overflow-y: auto; }
+        .modal-content { background-color: #fff; color: #000; margin: 5% auto; padding: 40px; border-radius: 8px; width: 80%; max-width: 800px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .modal-content h2 { color: #000; text-align: left; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .modal-content h3 { color: #333; margin-top: 20px; }
+        .modal-content p, .modal-content ul { font-size: 14px; line-height: 1.6; }
+        .close-btn { float: right; font-size: 24px; font-weight: bold; cursor: pointer; color: #000; }
+        
+        @media print { body * { visibility: hidden; } .modal-content, .modal-content * { visibility: visible; } .modal-content { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; box-shadow: none; } .close-btn { display: none; } }
+        @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } .header-content { flex-direction: column; align-items: flex-start; } }
+    </style>
+</head>
+<body>
+
+<div class="sticky-header">
+    <div class="header-content">
+        <div class="header-title"><h1>Zenith Trading Journal</h1></div>
+        <div class="author-signature">Por Andrés Gmz</div>
+    </div>
+    <div class="header-content">
+        <div class="dashboard" style="width:100%;">
+            <div class="dash-item"><div class="dash-title">Total Trades</div><div class="dash-value" id="dashTotal">0</div></div>
+            <div class="dash-item"><div class="dash-title">Win Rate</div><div class="dash-value" id="dashWinRate">0%</div></div>
+            <div class="dash-item"><div class="dash-title">Profit Factor</div><div class="dash-value" id="dashProfitFactor">0.00</div></div>
+            <div class="dash-item"><div class="dash-title">Expectancy</div><div class="dash-value" id="dashExpectancy">$0.00</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="fondeo-panel">
+        <div class="fondeo-config">
+            <label>Objetivo:</label><input type="number" id="cfObjetivo" value="10000" onchange="actualizarTodo()">
+            <label>DD Diario:</label><input type="number" id="cfDiario" value="500" onchange="actualizarTodo()">
+            <label>DD Total:</label><input type="number" id="cfTotal" value="1000" onchange="actualizarTodo()">
+            <label>Consistencia (%):</label><input type="number" id="cfConsistencia" value="50" onchange="actualizarTodo()">
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div class="semaforo verde" id="semObjetivo">Objetivo: OK</div>
+            <div class="semaforo verde" id="semDiario">Diario: OK</div>
+            <div class="semaforo verde" id="semTotal">Total: OK</div>
+            <div class="semaforo verde" id="semConsistencia">Consistencia: OK</div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="chart-container"><canvas id="equityChart"></canvas></div>
+        <div class="chart-container"><canvas id="pieChart"></canvas></div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stats-box">
+            <h3>Rendimiento General</h3>
+            <div class="stat-row"><span class="stat-label">Mayor Beneficio</span><span class="stat-val" id="stMaxBenefit">$0.00</span></div>
+            <div class="stat-row"><span class="stat-label">Mayor Pérdida</span><span class="stat-val" id="stMaxLoss">$0.00</span></div>
+            <div class="stat-row"><span class="stat-label">Lote Promedio</span><span class="stat-val" id="stAvgLot">0.00</span></div>
+            <div class="stat-row"><span class="stat-label">Ratio Total</span><span class="stat-val" id="stTotalRatio">0.00</span></div>
+            <div class="stat-row"><span class="stat-label">Factor de Recuperación</span><span class="stat-val" id="stRecovery">Sin DD</span></div>
+        </div>
+        <div class="stats-box">
+            <h3>Rachas y Días</h3>
+            <div class="stat-row"><span class="stat-label">Racha Máx. Ganadora</span><span class="stat-val" id="stStreakWin">0</span></div>
+            <div class="stat-row"><span class="stat-label">Racha Máx. Perdedora</span><span class="stat-val" id="stStreakLoss">0</span></div>
+            <div class="stat-row"><span class="stat-label">Mejor Activo</span><span class="stat-val" id="stBestAsset">-</span></div>
+            <div class="stat-row"><span class="stat-label">Mejor Sesión</span><span class="stat-val" id="stBestSession">-</span></div>
+            <div class="stat-row"><span class="stat-label">Mejor Día (Neto)</span><span class="stat-val" id="stBestDayNet">-</span></div>
+            <div class="stat-row"><span class="stat-label">Peor Día (Neto)</span><span class="stat-val" id="stWorstDayNet">-</span></div>
+        </div>
+    </div>
+
+    <h2>Cargar Operación</h2>
+    <div class="form-grid">
+        <div class="form-group"><label>Fecha</label><input type="date" id="fecha" onchange="calcularDia()"></div>
+        <div class="form-group"><label>Día</label><select id="dia"><option value="Lunes">Lunes</option><option value="Martes">Martes</option><option value="Miércoles">Miércoles</option><option value="Jueves">Jueves</option><option value="Viernes">Viernes</option><option value="Sábado">Sábado</option><option value="Domingo">Domingo</option></select></div>
+        <div class="form-group">
+            <label>Activo</label>
+            <select id="activo">
+                <optgroup label="Forex Mayores"><option value="EURUSD">EURUSD</option><option value="GBPUSD">GBPUSD</option><option value="USDJPY">USDJPY</option><option value="USDCHF">USDCHF</option><option value="AUDUSD">AUDUSD</option><option value="USDCAD">USDCAD</option><option value="NZDUSD">NZDUSD</option></optgroup>
+                <optgroup label="Forex Cruces"><option value="EURGBP">EURGBP</option><option value="EURJPY">EURJPY</option><option value="GBPJPY">GBPJPY</option><option value="AUDJPY">AUDJPY</option></optgroup>
+                <optgroup label="Metales"><option value="XAUUSD (Oro)">XAUUSD (Oro)</option><option value="XAGUSD (Plata)">XAGUSD (Plata)</option></optgroup>
+                <optgroup label="Índices"><option value="US30">US30</option><option value="NAS100">NAS100</option><option value="SPX500">SPX500</option><option value="GER40">GER40</option></optgroup>
+                <optgroup label="Criptomonedas"><option value="BTCUSD">BTCUSD</option><option value="ETHUSD">ETHUSD</option><option value="SOLUSD">SOLUSD</option></optgroup>
+            </select>
+        </div>
+        <div class="form-group"><label>Sesión</label><select id="sesion"><option value="New York">New York</option><option value="Londres">Londres</option><option value="Tokio">Tokio</option></select></div>
+        <div class="form-group"><label>Set Up</label><input type="number" id="setup" placeholder="Ej. 2"></div>
+        <div class="form-group"><label>Operación</label><select id="operacion"><option value="Compra">Compra</option><option value="Venta">Venta</option></select></div>
+        <div class="form-group"><label>Riesgo %</label><input type="number" id="riesgo" placeholder="0.5" step="0.01"></div>
+        <div class="form-group"><label>Lote</label><input type="number" id="lote" placeholder="0.10" step="0.01"></div>
+        <div class="form-group"><label>Pips SL</label><input type="number" id="pipsSL" placeholder="20"></div>
+        <div class="form-group"><label>Pips TP</label><input type="number" id="pipsTP" placeholder="40"></div>
+        <div class="form-group"><label>Resultado</label><select id="resultado"><option value="TP Full">TP Full</option><option value="TP Parcial">TP Parcial</option><option value="BE">BE</option><option value="SL">SL</option></select></div>
+        <div class="form-group"><label>Resultado $</label><input type="number" id="resultadoDolar" placeholder="-50 / 100" step="0.01"></div>
+        <div class="form-group"><label>Ratio (R:R)</label><input type="number" id="ratio" placeholder="2" step="0.01"></div>
+    </div>
+    <div class="form-group" style="margin-bottom: 15px;">
+        <label>Link de TradingView (Opcional)</label>
+        <input type="url" id="linkTV" placeholder="https://www.tradingview.com/x/...">
+    </div>
+    <div class="form-group" style="margin-bottom: 20px;">
+        <label>Observaciones / Emociones</label>
+        <textarea id="observaciones" rows="2" placeholder="¿Cómo te sentiste en este trade?"></textarea>
+    </div>
+
+    <button class="btn-add" onclick="agregarTrade()">➕ Agregar Operación</button>
+
+    <h2>Historial de Operaciones</h2>
+    <div class="table-wrapper">
+        <table id="tablaTrades">
+            <thead>
+                <tr>
+                    <th>Fecha</th><th>Día</th><th>Activo</th><th>Sesión</th><th>Resultado</th><th>Resultado $</th><th>TV</th><th>Obs</th><th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTabla"></tbody>
+        </table>
+    </div>
+
+    <button class="btn-export" onclick="exportarCSV()">📥 Exportar a Excel (CSV)</button>
+    <button class="btn-report" onclick="abrirInforme()">📄 Generar Informe de Backtesting</button>
+</div>
+
+<div id="modalInforme" class="modal">
+    <div class="modal-content" id="contenidoInforme">
+        <span class="close-btn" onclick="cerrarInforme()">×</span>
+        <h2>Informe de Backtesting - Zenith Trading Journal</h2>
+        <p><strong>Fecha del informe:</strong> <span id="repFecha"></span></p>
+        <p><strong>Total de Operaciones:</strong> <span id="repTotal"></span></p>
+        
+        <h3>Métricas de Rendimiento</h3>
+        <ul>
+            <li><strong>Win Rate:</strong> <span id="repWinRate"></span></li>
+            <li><strong>Profit Factor:</strong> <span id="repPF"></span></li>
+            <li><strong>Expectancy:</strong> <span id="repExpectancy"></span></li>
+            <li><strong>Racha Máx. Ganadora:</strong> <span id="repStreakWin"></span></li>
+            <li><strong>Racha Máx. Perdedora:</strong> <span id="repStreakLoss"></span></li>
+            <li><strong>Factor de Recuperación:</strong> <span id="repRecovery"></span></li>
+        </ul>
+
+        <h3>Análisis Cualitativo</h3>
+        <p><strong>Mejor Activo:</strong> <span id="repBestAsset"></span></p>
+        <p><strong>Mejor Sesión:</strong> <span id="repBestSession"></span></p>
+        <p><strong>Mejor Día:</strong> <span id="repBestDay"></span></p>
+        <p><strong>Peor Día:</strong> <span id="repWorstDay"></span></p>
+        
+        <h3>Conclusión</h3>
+        <p id="repConclusion"></p>
+        
+        <p style="margin-top: 30px; font-size: 12px; color: #666;">Generado automáticamente por Zenith Trading Journal.</p>
+    </div>
+</div>
+
+<script>
+    let trades = JSON.parse(localStorage.getItem('misTradesZenith')) || [];
+    let equityChart, pieChart;
+
+    // 1. Calcular Día automáticamente
+    function calcularDia() {
+        const fechaInput = document.getElementById('fecha').value;
+        if (!fechaInput) return;
+        const fecha = new Date(fechaInput + 'T00:00:00');
+        const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+        document.getElementById('dia').value = dias[fecha.getDay()];
+    }
+
+    // 2. Inicializar Gráficos
+    function inicializarGraficos() {
+        const ctxEquity = document.getElementById('equityChart').getContext('2d');
+        equityChart = new Chart(ctxEquity, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Equity', data: [], borderColor: '#d4af37', backgroundColor: 'rgba(212, 175, 55, 0.1)', borderWidth: 2, fill: true, tension: 0.1 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#333' }, ticks: { color: '#888' } } } }
+        });
+
+        const ctxPie = document.getElementById('pieChart').getContext('2d');
+        pieChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: { labels: ['TP Full', 'TP Parcial', 'BE', 'SL'], datasets: [{ data: [0, 0, 0, 0], backgroundColor: ['#66bb6a', '#81c784', '#888', '#ef5350'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e0e0e0' } } } }
+        });
+    }
+
+    function actualizarGraficos() {
+        let equity = 0, labels = [], dataEquity = [];
+        trades.forEach((t, index) => { equity += t.resultadoDolar; labels.push(index + 1); dataEquity.push(equity); });
+        equityChart.data.labels = labels; equityChart.data.datasets[0].data = dataEquity; equityChart.update();
+
+        let tpF = trades.filter(t => t.resultado === 'TP Full').length;
+        let tpP = trades.filter(t => t.resultado === 'TP Parcial').length;
+        let be = trades.filter(t => t.resultado === 'BE').length;
+        let sl = trades.filter(t => t.resultado === 'SL').length;
+        pieChart.data.datasets[0].data = [tpF, tpP, be, sl]; pieChart.update();
+    }
+
+    // 3. Actualizar todo (Estadísticas + Fondeo + Gráficos)
+    function actualizarTodo() {
+        const total = trades.length;
+        document.getElementById('dashTotal').innerText = total;
+        
+        // Reset visual si no hay trades
+        if (total === 0) {
+            document.getElementById('dashWinRate').innerText = "0%";
+            document.getElementById('dashProfitFactor').innerText = "0.00";
+            document.getElementById('dashExpectancy').innerText = "$0.00";
+            document.getElementById('stMaxBenefit').innerText = "$0.00";
+            document.getElementById('stMaxLoss').innerText = "$0.00";
+            document.getElementById('stAvgLot').innerText = "0.00";
+            document.getElementById('stTotalRatio').innerText = "0.00";
+            document.getElementById('stRecovery').innerText = "Sin DD";
+            document.getElementById('stStreakWin').innerText = "0";
+            document.getElementById('stStreakLoss').innerText = "0";
+            document.getElementById('stBestAsset').innerText = "-";
+            document.getElementById('stBestSession').innerText = "-";
+            document.getElementById('stBestDayNet').innerText = "-";
+            document.getElementById('stWorstDayNet').innerText = "-";
+            actualizarGraficos(); actualizarFondeo(); return;
+        }
+
+        // Cálculos base
+        const ganadores = trades.filter(t => t.resultadoDolar > 0);
+        const perdedores = trades.filter(t => t.resultadoDolar < 0);
+        const totalGanado = ganadores.reduce((sum, t) => sum + t.resultadoDolar, 0);
+        const totalPerdido = Math.abs(perdedores.reduce((sum, t) => sum + t.resultadoDolar, 0));
+        
+        // Win Rate y Profit Factor
+        document.getElementById('dashWinRate').innerText = ((ganadores.length / total) * 100).toFixed(1) + "%";
+        document.getElementById('dashProfitFactor').innerText = (totalPerdido === 0 ? totalGanado : (totalGanado / totalPerdido)).toFixed(2);
+
+        // Expectancy
+        const promGanancia = ganadores.length > 0 ? (totalGanado / ganadores.length) : 0;
+        const promPerdida = perdedores.length > 0 ? (totalPerdido / perdedores.length) : 0;
+        const expectancy = ((ganadores.length / total) * promGanancia) - ((perdedores.length / total) * promPerdida);
+        document.getElementById('dashExpectancy').innerText = (expectancy >= 0 ? "+$" : "-$") + Math.abs(expectancy).toFixed(2);
+
+        // Estadísticas generales
+        document.getElementById('stMaxBenefit').innerText = "$" + Math.max(...trades.map(t => t.resultadoDolar)).toFixed(2);
+        document.getElementById('stMaxLoss').innerText = "$" + Math.min(...trades.map(t => t.resultadoDolar)).toFixed(2);
+        document.getElementById('stAvgLot').innerText = (trades.reduce((sum, t) => sum + parseFloat(t.lote || 0), 0) / total).toFixed(2);
+        document.getElementById('stTotalRatio').innerText = trades.reduce((sum, t) => sum + parseFloat(t.ratio || 0), 0).toFixed(2);
+
+        // Drawdown y Recovery
+        let equity = 0, maxEquity = 0, maxDD = 0;
+        trades.forEach(t => { equity += t.resultadoDolar; if (equity > maxEquity) maxEquity = equity; if (maxEquity - equity > maxDD) maxDD = maxEquity - equity; });
+        document.getElementById('stRecovery').innerText = maxDD === 0 ? "Sin DD" : ((totalGanado - totalPerdido) / maxDD).toFixed(2);
+
+        // Rachas
+        let sW = 0, sL = 0, mW = 0, mL = 0;
+        trades.forEach(t => {
+            if (t.resultadoDolar > 0) { sW++; sL = 0; if (sW > mW) mW = sW; }
+            else if (t.resultadoDolar < 0) { sL++; sW = 0; if (sL > mL) mL = sL; }
+        });
+        document.getElementById('stStreakWin').innerText = mW;
+        document.getElementById('stStreakLoss').innerText = mL;
+
+        // Mejor Activo y Sesión
+        const agrupar = (key) => {
+            const obj = {};
+            trades.forEach(t => {
+                if (!obj[t[key]]) obj[t[key]] = { net: 0, wins: 0, total: 0 };
+                obj[t[key]].net += t.resultadoDolar; obj[t[key]].total++;
+                if (t.resultadoDolar > 0) obj[t[key]].wins++;
+            });
+            let best = "-", bVal = -Infinity;
+            for (let k in obj) {
+                let wr = (obj[k].wins / obj[k].total) * 100;
+                if (wr > bVal) { bVal = wr; best = k; }
+            }
+            return {best, bVal};
+        };
+        const activos = agrupar('activo');
+        document.getElementById('stBestAsset').innerText = `${activos.best} (${activos.bVal.toFixed(0)}%)`;
+        const sesiones = agrupar('sesion');
+        document.getElementById('stBestSession').innerText = `${sesiones.best} (${sesiones.bVal.toFixed(0)}%)`;
+
+        // Mejor y Peor Día (por ganancia neta)
+        const diasNetos = {};
+        trades.forEach(t => { if (!diasNetos[t.dia]) diasNetos[t.dia] = 0; diasNetos[t.dia] += t.resultadoDolar; });
+        let mejorDia = "-", mejorNet = -Infinity;
+        let peorDia = "-", peorNet = Infinity;
+        for (let d in diasNetos) {
+            if (diasNetos[d] > mejorNet) { mejorNet = diasNetos[d]; mejorDia = d; }
+            if (diasNetos[d] < peorNet) { peorNet = diasNetos[d]; peorDia = d; }
+        }
+        document.getElementById('stBestDayNet').innerText = `${mejorDia} ($${mejorNet.toFixed(0)})`;
+        document.getElementById('stWorstDayNet').innerText = `${peorDia} ($${peorNet.toFixed(0)})`;
+
+        actualizarGraficos(); 
+        actualizarFondeo();
+    }
+
+    // 4. Sistema de Fondeo (Semáforos)
+    function actualizarFondeo() {
+        const totalNeto = trades.reduce((sum, t) => sum + t.resultadoDolar, 0);
+        const obj = parseFloat(document.getElementById('cfObjetivo').value) || 0;
+        const limDiario = parseFloat(document.getElementById('cfDiario').value) || 0;
+        const limTotal = parseFloat(document.getElementById('cfTotal').value) || 0;
+        const limConsistencia = parseFloat(document.getElementById('cfConsistencia').value) || 0;
+
+        // 1. Objetivo
+        let semObj = document.getElementById('semObjetivo');
+        if (totalNeto >= obj) { semObj.className = "semaforo verde"; semObj.innerText = "🏆 ¡LOGRADO!"; }
+        else { semObj.className = "semaforo amarillo"; semObj.innerText = `Faltan: $${(obj - totalNeto).toFixed(0)}`; }
+
+        // 2. Drawdown Diario (por fecha)
+        const dias = {};
+        trades.forEach(t => { if (!dias[t.fecha]) dias[t.fecha] = 0; dias[t.fecha] += t.resultadoDolar; });
+        let peorDiaNet = 0;
+        for (let d in dias) { if (dias[d] < peorDiaNet) peorDiaNet = dias[d]; }
+        let semDia = document.getElementById('semDiario');
+        if (Math.abs(peorDiaNet) >= limDiario) { semDia.className = "semaforo rojo"; semDia.innerText = `🚨 DD Diario Excedido`; }
+        else if (Math.abs(peorDiaNet) >= (limDiario * 0.7)) { semDia.className = "semaforo amarillo"; semDia.innerText = `⚠ Cerca del límite`; }
+        else { semDia.className = "semaforo verde"; semDia.innerText = `Diario: OK`; }
+
+        // 3. Drawdown Total
+        let equity = 0, maxEquity = 0, maxDD = 0;
+        trades.forEach(t => { equity += t.resultadoDolar; if (equity > maxEquity) maxEquity = equity; if (maxEquity - equity > maxDD) maxDD = maxEquity - equity; });
+        let semTot = document.getElementById('semTotal');
+        if (maxDD >= limTotal) { semTot.className = "semaforo rojo"; semTot.innerText = `🚨 DD Total Excedido`; }
+        else if (maxDD >= (limTotal * 0.7)) { semTot.className = "semaforo amarillo"; semTot.innerText = `⚠ Cerca del límite`; }
+        else { semTot.className = "semaforo verde"; semTot.innerText = `Total: OK`; }
+
+        // 4. Consistencia (El mejor día no debe superar el X% de la ganancia total)
+        let semCons = document.getElementById('semConsistencia');
+        if (totalNeto <= 0) { semCons.className = "semaforo verde"; semCons.innerText = `Consistencia: OK`; }
+        else {
+            const mejorDiaVal = Math.max(...Object.values(dias));
+            const porcentajeConsistencia = (mejorDiaVal / totalNeto) * 100;
+            if (porcentajeConsistencia > limConsistencia) { semCons.className = "semaforo rojo"; semCons.innerText = `🚨 Depende de 1 día`; }
+            else { semCons.className = "semaforo verde"; semCons.innerText = `Consistencia: OK`; }
+        }
+    }
+
+    // 5. Tabla y CRUD
+    function renderizarTabla() {
+        const tbody = document.getElementById('cuerpoTabla');
+        tbody.innerHTML = '';
+        trades.forEach((trade, index) => {
+            const row = document.createElement('tr');
+            const claseDolar = trade.resultadoDolar >= 0 ? 'positive' : 'negative';
+            row.innerHTML = `
+                <td>${trade.fecha}</td>
+                <td>${trade.dia}</td>
+                <td>${trade.activo}</td>
+                <td>${trade.sesion}</td>
+                <td>${trade.resultado}</td>
+                <td class="${claseDolar}">$${trade.resultadoDolar}</td>
+                <td>${trade.linkTV ? '<a href="'+trade.linkTV+'" target="_blank" style="color:#d4af37;">Ver</a>' : '-'}</td>
+                <td title="${trade.observaciones || ''}">${trade.observaciones ? trade.observaciones.substring(0, 10) + '...' : '-'}</td>
+                <td><button onclick="eliminarTrade(${index})" style="background:#ef5350; color:white; padding:4px 8px; border-radius:3px; border:none; cursor:pointer;">X</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+        localStorage.setItem('misTradesZenith', JSON.stringify(trades));
+        actualizarTodo(); 
+    }
+
+    function agregarTrade() {
+        const fecha = document.getElementById('fecha').value;
+        if (!fecha) { alert("La fecha es obligatoria."); return; }
+
+        const nuevoTrade = {
+            fecha: fecha,
+            dia: document.getElementById('dia').value,
+            activo: document.getElementById('activo').value,
+            sesion: document.getElementById('sesion').value,
+            setup: document.getElementById('setup').value || "-",
+            operacion: document.getElementById('operacion').value,
+            riesgo: document.getElementById('riesgo').value || 0,
+            lote: document.getElementById('lote').value || 0,
+            pipsSL: document.getElementById('pipsSL').value || 0,
+            pipsTP: document.getElementById('pipsTP').value || 0,
+            resultado: document.getElementById('resultado').value,
+            resultadoDolar: parseFloat(document.getElementById('resultadoDolar').value) || 0,
+            ratio: parseFloat(document.getElementById('ratio').value) || 0,
+            linkTV: document.getElementById('linkTV').value || "",
+            observaciones: document.getElementById('observaciones').value || ""
+        };
+        
+        trades.push(nuevoTrade);
+        
+        // Limpiar campos
+        document.getElementById('resultadoDolar').value = '';
+        document.getElementById('ratio').value = '';
+        document.getElementById('setup').value = '';
+        document.getElementById('riesgo').value = '';
+        document.getElementById('lote').value = '';
+        document.getElementById('pipsSL').value = '';
+        document.getElementById('pipsTP').value = '';
+        document.getElementById('linkTV').value = '';
+        document.getElementById('observaciones').value = '';
+
+        renderizarTabla();
+    }
+
+    function eliminarTrade(index) {
+        if (confirm("¿Eliminar este trade?")) {
+            trades.splice(index, 1);
+            renderizarTabla();
+        }
+    }
+
+    // 6. Exportar a CSV
+    function exportarCSV() {
+        if (trades.length === 0) { alert("No hay datos para exportar."); return; }
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "Fecha;Día;Activo;Sesión;Set Up;Operación;Riesgo %;Lote;Pips SL;Pips TP;Resultado;Resultado $;Ratio;Link TV;Observaciones\n";
+        trades.forEach(row => {
+            csvContent += `"${row.fecha}";"${row.dia}";"${row.activo}";"${row.sesion}";"${row.setup}";"${row.operacion}";"${row.riesgo}";"${row.lote}";"${row.pipsSL}";"${row.pipsTP}";"${row.resultado}";"${row.resultadoDolar}";"${row.ratio}";"${row.linkTV}";"${row.observaciones}"\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "Zenith_Trading_Journal.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // 7. Generar Informe PDF
+    function abrirInforme() {
+        if (trades.length === 0) { alert("No hay trades para generar el informe."); return; }
+        
+        const total = trades.length;
+        const ganadores = trades.filter(t => t.resultadoDolar > 0);
+        const perdedores = trades.filter(t => t.resultadoDolar < 0);
+        const totalGanado = ganadores.reduce((sum, t) => sum + t.resultadoDolar, 0);
+        const totalPerdido = Math.abs(perdedores.reduce((sum, t) => sum + t.resultadoDolar, 0));
+        const winRate = ((ganadores.length / total) * 100).toFixed(1);
+        const pf = (totalPerdido === 0 ? totalGanado : (totalGanado / totalPerdido)).toFixed(2);
+        
+        const promGanancia = ganadores.length > 0 ? (totalGanado / ganadores.length) : 0;
+        const promPerdida = perdedores.length > 0 ? (totalPerdido / perdedores.length) : 0;
+        const expectancy = (((ganadores.length / total) * promGanancia) - ((perdedores.length / total) * promPerdida)).toFixed(2);
+
+        // Rachas
+        let sW = 0, sL = 0, mW = 0, mL = 0;
+        trades.forEach(t => {
+            if (t.resultadoDolar > 0) { sW++; sL = 0; if (sW > mW) mW = sW; }
+            else if (t.resultadoDolar < 0) { sL++; sW = 0; if (sL > mL) mL = sL; }
+        });
+
+        // Mejor / Peor día
+        const diasNetos = {};
+        trades.forEach(t => { if (!diasNetos[t.dia]) diasNetos[t.dia] = 0; diasNetos[t.dia] += t.resultadoDolar; });
+        let mejorDia = "-", mejorNet = -Infinity;
+        let peorDia = "-", peorNet = Infinity;
+        for (let d in diasNetos) {
+            if (diasNetos[d] > mejorNet) { mejorNet = diasNetos[d]; mejorDia = d; }
+            if (diasNetos[d] < peorNet) { peorNet = diasNetos[d]; peorDia = d; }
+        }
+
+        // Llenar el modal
+        document.getElementById('repFecha').innerText = new Date().toLocaleDateString();
+        document.getElementById('repTotal').innerText = total;
+        document.getElementById('repWinRate').innerText = winRate + "%";
+        document.getElementById('repPF').innerText = pf;
+        document.getElementById('repExpectancy').innerText = "$" + expectancy;
+        document.getElementById('repStreakWin').innerText = mW + " trades";
+        document.getElementById('repStreakLoss').innerText = mL + " trades";
+        document.getElementById('repBestAsset').innerText = document.getElementById('stBestAsset').innerText;
+        document.getElementById('repBestSession').innerText = document.getElementById('stBestSession').innerText;
+        document.getElementById('repBestDay').innerText = `${mejorDia} ($${mejorNet.toFixed(0)})`;
+        document.getElementById('repWorstDay').innerText = `${peorDia} ($${peorNet.toFixed(0)})`;
+        
+        let conclusion = "";
+        if (pf >= 1.5 && expectancy > 0) {
+            conclusion = "El sistema presenta una ventaja estadística sólida. El Profit Factor es saludable y la Esperanza Matemática es positiva, lo que indica que a largo plazo la estrategia es rentable.";
+        } else if (pf < 1.5 && pf > 1) {
+            conclusion = "El sistema es rentable pero ajustado. Se recomienda revisar la gestión de riesgo para aumentar el Profit Factor y mejorar la consistencia.";
+        } else {
+            conclusion = "Atención: El Profit Factor es menor a 1. El sistema está perdiendo dinero. Es necesario revisar la estrategia, los Stop Loss o la relación Riesgo/Beneficio.";
+        }
+        document.getElementById('repConclusion').innerText = conclusion;
+
+        document.getElementById('modalInforme').style.display = 'block';
+    }
+
+    function cerrarInforme() {
+        document.getElementById('modalInforme').style.display = 'none';
+    }
+
+    // 8. Inicializar todo al cargar
+    window.onload = function() {
+        inicializarGraficos();
+        renderizarTabla();
+    };
+</script>
+</body>
+</html>
